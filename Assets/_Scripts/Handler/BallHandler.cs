@@ -1,6 +1,5 @@
 using DG.Tweening;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 
@@ -18,7 +17,13 @@ namespace _Scripts.Handler
         private bool _isInit;
         private SortingGroup _sortingGroup;
 
-        public EBallState ballState
+        public EBallState state
+        {
+            get;
+            private set;
+        }
+
+        public EBallType type
         {
             get;
             private set;
@@ -34,12 +39,13 @@ namespace _Scripts.Handler
             }
         }
 
-        public void Initialize(int color, EBallState state)
+        public void Initialize(int color, EBallState state, EBallType type = EBallType.Normal)
         {
             InitObject();
-            ballState = state;
+            this.state = state;
             this.color = color;
             _imgBall.color = DataManager.Instance.colorBank[color];
+            this.type = type;
         }
 
         public void Move(Vector3[] movePath)
@@ -49,7 +55,7 @@ namespace _Scripts.Handler
 
         public void Grow()
         {
-            ballState = EBallState.Normal;
+            state = EBallState.Normal;
             transform.DOScale(0.9f * Vector3.one, 0.25f);
         }
     }

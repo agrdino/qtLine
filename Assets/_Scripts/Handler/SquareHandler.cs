@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace _Scripts.Handler
 {
@@ -13,6 +14,9 @@ namespace _Scripts.Handler
         public bool isScore;
         public bool hasBall => ball != null && ball.gameObject.activeSelf;
         public BallHandler ball;
+        public SquareHandler node;
+
+        public Image img;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -21,6 +25,7 @@ namespace _Scripts.Handler
 
         public void Initialize(int x, int y)
         {
+            img = GetComponent<Image>();
             ball = null;
             col = x;
             row = y;

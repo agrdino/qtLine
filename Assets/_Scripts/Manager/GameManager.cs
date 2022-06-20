@@ -1,10 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using _Prefab.Popup.NotiPopup;
 using _Scripts.Handler;
 using _Scripts.System;
+using DG.Tweening;
+using Scene.GameScene;
 using UnityEngine;
-using UnityEngine.UI;
 using static qtHelper;
 
 public class GameManager : qtSingleton<GameManager>
@@ -15,6 +17,7 @@ public class GameManager : qtSingleton<GameManager>
 
     #region ----- VARIABLE -----
 
+    
     private const int Col = 9;
     private const int Row = 9;
     
@@ -23,6 +26,8 @@ public class GameManager : qtSingleton<GameManager>
     private SquareHandler[,] _squareHandlers;
     private List<SquareHandler> _squareForCheck;
     private List<SquareHandler> _ballQueue;
+    private List<List<SquareHandler>> _row;
+    private Dictionary<SquareHandler, bool> _path;
 
     private bool _isSetUp;
 
@@ -31,6 +36,8 @@ public class GameManager : qtSingleton<GameManager>
         get;
         private set;
     }
+    public int score { get; private set; }
+    
     #endregion
 
     public void StartGame()
@@ -44,7 +51,7 @@ public class GameManager : qtSingleton<GameManager>
     {
         if (selectedBall == null)
         {
-            if (target.ball == null || target.ball.ballState == EBallState.Queue)
+            if (target.ball == null || target.ball.state == EBallState.Queue)
             {
                 return;
             }
@@ -61,7 +68,7 @@ public class GameManager : qtSingleton<GameManager>
 
         if (target.ball != null)
         {
-            if (target.ball.ballState == EBallState.Normal)
+            if (target.ball.state == EBallState.Normal)
             {
                 selectedBall = target;
                 return;
@@ -86,26 +93,49 @@ public class GameManager : qtSingleton<GameManager>
             }
         }
 
-        selectedBall.ball.transform.position = target.transform.position;
-        target.ball = selectedBall.ball;
-        selectedBall.ball = null;
-        selectedBall = null;
-        
-        _ballQueue.ForEach(square =>
+        if (selectedBall.ball.type == EBallType.Ghost)
         {
-            square.ball.Grow();
-        });
-        _ballQueue.Clear();
-        
-        ScoreCheck();
-
-        if (isEnd)
-        {
-            ((NotiPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Noti)).Initialize("You lose");
+            
         }
-
-        NewTurn();
+        else
+        {
+            foreach (var key in _path.Keys.ToList())
+            {
+                key.node = null;
+                _path[key] = false;
+            }
+            // StartCoroutine(FindPath(selectedBall, target));
+            if (FindPath(selectedBall, target))
+            {
+                Debug.LogWarning("Move");
+                target.ball = selectedBall.ball;
+                StartCoroutine(Move(selectedBall));
+                selectedBall.ball = null;
+                selectedBall = null;
+            
+                _ballQueue.ForEach(square =>
+                {
+                    square.ball.Grow();
+                });
+                _ballQueue.Clear();
+            
+                ScoreCalculate();
+            
+                if (isEnd)
+                {
+                    ((NotiPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Noti)).Initialize("You lose");
+                }
+            
+                NewTurn();
+            }
+            else
+            {
+                Debug.LogError("Cant find path!");
+                selectedBall = null;
+            }
+        }
     }
+    
 
     #endregion
 
@@ -113,6 +143,8 @@ public class GameManager : qtSingleton<GameManager>
     
     private void Initialize()
     {
+        score = 0;
+
         if (!_isSetUp)
         {
             SetUpBoard();
@@ -136,6 +168,8 @@ public class GameManager : qtSingleton<GameManager>
         _squareHandlers ??= new SquareHandler[Col, Row];
         _squareForCheck ??= new List<SquareHandler>();
         _ballQueue ??= new List<SquareHandler>();
+        _row ??= new List<List<SquareHandler>>();
+        _path ??= new Dictionary<SquareHandler, bool>();
 
         for (int row = 0; row < 9; row++)
         {
@@ -149,6 +183,7 @@ public class GameManager : qtSingleton<GameManager>
                     tempSquare.gameObject.SetActive(true);
                     _squareHandlers[col, row] = tempSquare;
                     _squareForCheck.Add(tempSquare);
+                    _path.Add(tempSquare, false);
                 }
                 else
                 {
@@ -157,8 +192,82 @@ public class GameManager : qtSingleton<GameManager>
                     tempSquare.Initialize(col, row);
                     _squareHandlers[col, row] = tempSquare;
                     _squareForCheck.Add(tempSquare);
+                    _path.Add(tempSquare, false);
                 }
             }
+        }
+        
+        //Get row
+        var tempList = new List<SquareHandler>();
+        //col
+        for (int i = 0; i < Row; i++)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < Col; j++)
+            {
+                tempList.Add(_squareHandlers[j, i]);
+            }
+            _row.Add(tempList);
+        }
+
+        //row
+        for (int i = 0; i < Col; i++)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < Row; j++)
+            {
+                tempList.Add(_squareHandlers[i, j]);
+            }
+            
+            _row.Add(tempList);
+        }
+
+        //diagonal l-r
+        for (int i = 2; i < Col; i++)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < i; j++)
+            {
+                tempList.Add(_squareHandlers[i-j, j]);
+            }
+
+            _row.Add(tempList);
+        }
+        
+        //diagonal l-r
+        for (int i = 1; i < Col - 2; i++)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < Row - i; j++)
+            {
+                tempList.Add(_squareHandlers[i+j, Col - 1 - j]);
+            }
+            
+            _row.Add(tempList);
+        }
+        
+        //diagonal r-l
+        for (int i = Col - 3; i >= 1; i--)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < Col - i; j++)
+            {
+                tempList.Add(_squareHandlers[i+j, j]);
+            }
+
+            _row.Add(tempList);
+        }
+        
+        //diagonal r-l
+        for (int i = 2; i < Col - 1; i++)
+        {
+            tempList = new List<SquareHandler>();
+            for (int j = 0; j < i; j++)
+            {
+                tempList.Add(_squareHandlers[i-j, Row - 1 - j]);
+            }
+            
+            _row.Add(tempList);
         }
     }
 
@@ -184,6 +293,21 @@ public class GameManager : qtSingleton<GameManager>
             square.ball = ball;
         }
         NewTurn();
+    }
+
+    private IEnumerator Move(SquareHandler startPosition)
+    {
+        var temp = startPosition;
+        var ball = startPosition.ball;
+        var moveCoroutine = new WaitForSeconds(0.01f);
+        while (temp.node != null)
+        {
+            ball.transform.DOMove(temp.node.transform.position, 0.01f);
+            temp = temp.node;
+            yield return moveCoroutine;
+        }
+
+        ball.transform.position = temp.transform.position;
     }
 
     private void NewTurn()
@@ -214,69 +338,17 @@ public class GameManager : qtSingleton<GameManager>
 
     }
 
-    private bool isEnd => _squareForCheck.Find(square => !square.hasBall || square.ball.ballState == EBallState.Queue) == null;
+    private bool isEnd => _squareForCheck.Find(square => !square.hasBall || square.ball.state == EBallState.Queue) == null;
 
-    private void ScoreCheck()
+    private void ScoreCalculate()
     {
-        var tempList = new List<SquareHandler>();
-        //col
-        for (int i = 0; i < Row; i++)
+        foreach (var row in _row)
         {
-            tempList.Clear();
-            for (int j = 0; j < Col; j++)
-            {
-                tempList.Add(_squareHandlers[j, i]);
-            }
-            ScoreCheck(tempList);
+            score += ScoreCheck(row);
         }
 
-        //row
-        for (int i = 0; i < Col; i++)
-        {
-            tempList.Clear();
-            for (int j = 0; j < Row; j++)
-            {
-                tempList.Add(_squareHandlers[i, j]);
-            }
-            ScoreCheck(tempList);
-        }
+        score += _squareForCheck.FindAll(square => square.isScore).Count;
 
-        //diagonal l-r
-        for (int i = 2; i < Col; i++)
-        {
-            tempList.Clear();
-            for (int j = 0; j < i; j++)
-            {
-                tempList.Add(_squareHandlers[i-j, j]);
-            }
-
-            ScoreCheck(tempList);
-        }
-        
-        //diagonal l-r
-        for (int i = 1; i < Col - 2; i++)
-        {
-            tempList.Clear();
-            for (int j = 0; j < Row - i; j++)
-            {
-                tempList.Add(_squareHandlers[i+j, Col - 1 - j]);
-            }
-            ScoreCheck(tempList);
-        }
-
-        
-        //diagonal r-l
-        for (int i = Col - 3; i >= 1; i--)
-        {
-            tempList.Clear();
-            for (int j = 0; j < Col - i; j++)
-            {
-                tempList.Add(_squareHandlers[i+j, j]);
-            }
-
-            ScoreCheck(tempList);
-        }
-        
         foreach (var squareHandler in _squareHandlers)
         {
             if (squareHandler.isScore)
@@ -284,29 +356,11 @@ public class GameManager : qtSingleton<GameManager>
                 squareHandler.Score();
             }
         }
-        
-        //diagonal r-l
-        for (int i = 2; i < Col - 1; i++)
-        {
-            tempList.Clear();
-            for (int j = 0; j < i; j++)
-            {
-                tempList.Add(_squareHandlers[i-j, Row - 1 - j]);
-            }
 
-            ScoreCheck(tempList);
-        }
-        
-        foreach (var squareHandler in _squareHandlers)
-        {
-            if (squareHandler.isScore)
-            {
-                squareHandler.Score();
-            }
-        }
+        ((GameScene) UIManager.Instance.currentScene).UpdateUI();
     }
 
-    private void ScoreCheck(List<SquareHandler> checkList)
+    private int ScoreCheck(List<SquareHandler> checkList)
     {
         int bonus = 0;
         bool isBonus = false;
@@ -317,7 +371,11 @@ public class GameManager : qtSingleton<GameManager>
         scoreList.Add(root);
         for (int j = 1; j < checkList.Count; j++)
         {
-            if (!checkList[j].hasBall || !root.hasBall || checkList[j].ball.color != root.ball.color)
+            if (!checkList[j].hasBall 
+                || !root.hasBall 
+                || checkList[j].ball.color != root.ball.color
+                || root.ball.state == EBallState.Queue
+                || checkList[j].ball.state == EBallState.Queue)
             {
                 countBall = 1;
                 root = checkList[j];
@@ -331,6 +389,7 @@ public class GameManager : qtSingleton<GameManager>
                 scoreList.Add(root);
                 if (countBall >= 3)
                 {
+                    Debug.Log(scoreList.Count);
                     scoreList.ForEach(square => square.isScore = true);
                 }
 
@@ -341,6 +400,271 @@ public class GameManager : qtSingleton<GameManager>
                 }
             }
         }
+
+        return bonus;
+    }
+    
+
+    private int count;
+    private bool FindPath(SquareHandler startPosition, SquareHandler targetPosition)
+    {
+        count++;
+        if (startPosition.Equals(targetPosition))
+        {
+            return true;
+        }
+        
+        if (AvailableDirection(targetPosition).Count == 0)
+        {
+            //Cant move to target
+            return false;
+        }
+        
+        var availableMove = AvailableDirection(startPosition);
+        if (availableMove.Count == 0)
+        {
+            //Start cant move
+            return false;
+        }
+        
+        while (availableMove.Count > 0)
+        {
+            if (count > 1000)
+            {
+                break;
+            }
+            startPosition.node = availableMove.Pop();
+            if (_path[startPosition.node])
+            {
+                continue;
+            }
+            _path[startPosition.node] = true;
+            if(FindPath(startPosition.node, targetPosition))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Stack<SquareHandler> AvailableDirection(SquareHandler center)
+    {
+        Stack<SquareHandler> direction = new Stack<SquareHandler>();
+
+        //left border
+        if (center.col - 1 < 0)
+        {
+            //Left-bot corner
+            if (center.row + 1 >= Row)
+            {
+                //Top
+                if (!_squareHandlers[center.col, center.row - 1].hasBall 
+                    || _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col, center.row - 1]);
+                }
+                
+                //Right
+                if (!_squareHandlers[center.col + 1, center.row].hasBall 
+                    || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col + 1, center.row]);
+                }
+                return direction;
+            }
+
+            //Left-top corner
+            if (center.row - 1 < 0)
+            {
+                //Bot
+                if (!_squareHandlers[center.col, center.row + 1].hasBall 
+                    || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col, center.row + 1]);
+                }
+                
+                //Right
+                if (!_squareHandlers[center.col + 1, center.row].hasBall 
+                    || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col + 1, center.row]);
+                }
+                return direction;
+            }
+
+            //Right
+            if (!_squareHandlers[center.col + 1, center.row].hasBall ||
+                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col + 1, center.row]);
+            }  
+
+            //Top
+            if (!_squareHandlers[center.col, center.row - 1].hasBall ||
+                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row - 1]);
+            }        
+        
+            //Bot
+            if (!_squareHandlers[center.col, center.row + 1].hasBall ||
+                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row + 1]);
+            }        
+            return direction;
+        }
+        
+        //Right border
+        if (center.col + 1 >= Col)
+        {
+            //Right-bot corner
+            if (center.row + 1 >= Row)
+            {
+                //Top
+                if (!_squareHandlers[center.col, center.row - 1].hasBall ||
+                    _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col, center.row - 1]);
+                }
+
+                //Left
+                if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col - 1, center.row]);
+                }
+
+                return direction;
+            }
+
+            //Right-top corner
+            if (center.row - 1 < 0)
+            {
+                //Bot
+                if (!_squareHandlers[center.col, center.row + 1].hasBall ||
+                    _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col, center.row + 1]);
+                }
+
+                //Left
+                if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+                {
+                    direction.Push(_squareHandlers[center.col - 1, center.row]);
+                }
+
+                return direction;
+            }
+            
+            //Left
+            if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col - 1, center.row]);
+            }        
+            
+            //Top
+            if (!_squareHandlers[center.col, center.row - 1].hasBall ||
+                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row - 1]);
+            }        
+        
+            //Bot
+            if (!_squareHandlers[center.col, center.row + 1].hasBall ||
+                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row + 1]);
+            }        
+            return direction;
+
+        }
+        
+        //Top border
+        if (center.row - 1 < 0)
+        {
+            //Right
+            if (!_squareHandlers[center.col + 1, center.row].hasBall ||
+                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col + 1, center.row]);
+            }
+
+            //Left
+            if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col - 1, center.row]);
+            }
+
+            //Bot
+            if (!_squareHandlers[center.col, center.row + 1].hasBall ||
+                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row + 1]);
+            }
+
+            return direction;
+        }
+        
+        //Bot border
+        if (center.row + 1 >= Row)
+        {
+            //Right
+            if (!_squareHandlers[center.col + 1, center.row].hasBall ||
+                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col + 1, center.row]);
+            }  
+        
+            //Left
+            if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col - 1, center.row]);
+            }        
+        
+            //Top
+            if (!_squareHandlers[center.col, center.row - 1].hasBall ||
+                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+            {
+                direction.Push(_squareHandlers[center.col, center.row - 1]);
+            }        
+        
+            return direction;
+        }
+
+        //Right
+        if (!_squareHandlers[center.col + 1, center.row].hasBall ||
+            _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+        {
+            direction.Push(_squareHandlers[center.col + 1, center.row]);
+        }  
+        
+        //Left
+        if (!_squareHandlers[center.col - 1, center.row].hasBall ||
+            _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+        {
+            direction.Push(_squareHandlers[center.col - 1, center.row]);
+        }        
+        
+        //Top
+        if (!_squareHandlers[center.col, center.row - 1].hasBall ||
+            _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+        {
+            direction.Push(_squareHandlers[center.col, center.row - 1]);
+        }        
+        
+        //Bot
+        if (!_squareHandlers[center.col, center.row + 1].hasBall ||
+            _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+        {
+            direction.Push(_squareHandlers[center.col, center.row + 1]);
+        }        
+        return direction;
     }
 
     #endregion
