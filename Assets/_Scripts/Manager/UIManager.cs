@@ -38,7 +38,7 @@ namespace _Scripts.System
         #region ----- VARIABLE -----
 
         private GameObject _canvasOnTop;
-        private GameObject _canvas;
+        private GameObject canvas;
         private GameObject _ignoreCast;
         private Image _fading;
 
@@ -61,7 +61,7 @@ namespace _Scripts.System
         private void InitObject()
         {
             _canvasOnTop = FindObjectInRootIncludingInactive("CanvasOnTop");
-            _canvas = FindObjectInRootIncludingInactive("Canvas");
+            canvas = FindObjectInRootIncludingInactive("Canvas");
         }
         
         private void Initialize()
@@ -167,10 +167,10 @@ namespace _Scripts.System
 
             if (!_scenes.ContainsKey(scene))
             {
-                var temp = FindObjectInChildren(_canvas, showScene.scene.name);
+                var temp = FindObjectInChildren(canvas, showScene.scene.name);
                 if (temp == null)
                 {
-                    tempScene = Instantiate(sceneData.sences.Find(x => x.id == scene).scene, _canvas.transform).GetComponent<sceneBase>();
+                    tempScene = Instantiate(sceneData.sences.Find(x => x.id == scene).scene, canvas.transform).GetComponent<sceneBase>();
                     tempScene.InitObject();
                     _scenes.Add(scene, tempScene);
                 }
@@ -195,8 +195,8 @@ namespace _Scripts.System
             }
             else
             {
-                tempScene.Show();
                 currentScene = tempScene;
+                tempScene.Show();
             }
 
             currentHUD = ShowHUD(showScene);

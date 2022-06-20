@@ -1,3 +1,12 @@
+using System.Collections;
+using System.Collections.Generic;
+using _Prefab.Popup.NotiPopup;
+using _Scripts.Handler;
+using _Scripts.System;
+using UnityEngine;
+using UnityEngine.UI;
+using static qtHelper;
+
 public class GameManager : qtSingleton<GameManager>
 {
     #region Controller
@@ -5,10 +14,332 @@ public class GameManager : qtSingleton<GameManager>
     #endregion
 
     #region ----- VARIABLE -----
+
+    private const int Col = 9;
+    private const int Row = 9;
     
+    private GameObject _board;
+
+    private SquareHandler[,] _squareHandlers;
+    private List<SquareHandler> _ballQueue;
+
+    private bool _isSetUp;
+
+    public SquareHandler selectedBall
+    {
+        get;
+        private set;
+    }
     #endregion
 
     public void StartGame()
     {
+        Initialize();
     }
+
+    #region ----- PUBLIC FUNCTION -----
+    
+    public void TargetSelect(SquareHandler target)
+    {
+        if (selectedBall == null)
+        {
+            if (target.ball == null || target.ball.ballState == EBallState.Queue)
+            {
+                return;
+            }
+            
+            selectedBall = target;
+            return;
+        }
+        
+        if (selectedBall != null && selectedBall.Equals(target))
+        {
+            selectedBall = null;
+            return;
+        }
+
+        if (target.ball != null)
+        {
+            if (target.ball.ballState == EBallState.Normal)
+            {
+                selectedBall = target;
+                return;
+            }
+            
+            SquareHandler square = null;
+            do
+            {
+                square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+            } while (square.hasBall);
+
+            var ball = target.ball;
+            _ballQueue.Remove(target);
+            _ballQueue.Add(square);
+            
+            square.ball = ball;
+            target.ball = null;
+            ball.transform.position = square.transform.position;
+        }
+
+        selectedBall.ball.transform.position = target.transform.position;
+        target.ball = selectedBall.ball;
+        selectedBall.ball = null;
+        selectedBall = null;
+        
+        _ballQueue.ForEach(square =>
+        {
+            square.ball.Grow();
+        });
+        _ballQueue.Clear();
+        
+        ScoreCheck();
+
+        if (EndCheck())
+        {
+            ((NotiPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Noti)).Initialize("You lose");
+        }
+
+        NewTurn();
+    }
+
+    #endregion
+
+    #region ----- PRIVATE FUNCTION -----
+    
+    private void Initialize()
+    {
+        if (!_isSetUp)
+        {
+            SetUpBoard();
+        }
+        
+        //Todo: Reset board
+        //_squareHandlers.Clear();
+        
+        //Todo: Spawn ball
+        _ballQueue.ForEach(ball => ball.gameObject.SetActive(false));
+        _ballQueue.Clear();
+
+        StartCoroutine(InitBall());
+    }
+
+    private void SetUpBoard()
+    {
+        _isSetUp = true;
+
+        _board = FindObjectWithPath(UIManager.Instance.currentScene.gameObject, "Board");
+        _squareHandlers ??= new SquareHandler[Col, Row];
+        _ballQueue ??= new List<SquareHandler>();
+
+        for (int row = 0; row < 9; row++)
+        {
+            for (int col = 0; col < 9; col++)
+            {
+                if ((row + col) % 2 == 0)
+                {
+                    var tempSquare = qtPooling.Instance.Spawn(DataManager.Instance.SquareLight.name,
+                        DataManager.Instance.SquareLight, _board.transform).GetComponent<SquareHandler>();
+                    tempSquare.Initialize(col, row);
+                    tempSquare.gameObject.SetActive(true);
+                    _squareHandlers[col, row] = tempSquare;
+                }
+                else
+                {
+                    var tempSquare = qtPooling.Instance.Spawn(DataManager.Instance.SquareDark.name,
+                        DataManager.Instance.SquareDark, _board.transform).GetComponent<SquareHandler>();
+                    tempSquare.Initialize(col, row);
+                    _squareHandlers[col, row] = tempSquare;
+                }
+            }
+        }
+    }
+
+    private IEnumerator InitBall()
+    {
+        var delayCoroutine = new WaitForSeconds(0.25f);
+        yield return delayCoroutine;
+        for (int i = 0; i < 8; i++)
+        {
+            SquareHandler square = null;
+            do
+            {
+                square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+            } while (square.hasBall);
+            var randomColor = Random.Range(0, DataManager.Instance.colorBank.Length);
+            
+            var ball = qtPooling.Instance.Spawn(DataManager.Instance.Ball.name, DataManager.Instance.Ball, UIManager.Instance.currentScene.transform).GetComponent<BallHandler>();
+            ball.transform.localScale = 0.3f * Vector3.one;
+            ball.Initialize(randomColor, EBallState.Normal);
+            ball.Grow();
+
+            ball.transform.position = square.transform.position;
+            square.ball = ball;
+        }
+        NewTurn();
+    }
+
+    private void NewTurn()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            SquareHandler square = null;
+            do
+            {
+                square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+            } while (square.hasBall);
+            
+            var ball = qtPooling.Instance.Spawn(DataManager.Instance.Ball.name, DataManager.Instance.Ball, UIManager.Instance.currentScene.transform).GetComponent<BallHandler>();
+            
+            var randomColor = Random.Range(0, DataManager.Instance.colorBank.Length);
+            ball.Initialize(randomColor, EBallState.Queue);
+            ball.transform.localScale = 0.3f * Vector3.one;
+
+            ball.transform.position = square.transform.position;
+            square.ball = ball;
+            _ballQueue.Add(square);
+        }
+
+    }
+
+    public bool EndCheck()
+    {
+        foreach (var squareHandler in _squareHandlers)
+        {
+            if (!squareHandler.hasBall || squareHandler.ball.ballState == EBallState.Queue)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void ScoreCheck()
+    {
+        var tempList = new List<SquareHandler>();
+        //col
+        for (int i = 0; i < Row; i++)
+        {
+            tempList.Clear();
+            for (int j = 0; j < Col; j++)
+            {
+                tempList.Add(_squareHandlers[j, i]);
+            }
+            ScoreCheck(tempList);
+        }
+
+        //row
+        for (int i = 0; i < Col; i++)
+        {
+            tempList.Clear();
+            for (int j = 0; j < Row; j++)
+            {
+                tempList.Add(_squareHandlers[i, j]);
+            }
+            ScoreCheck(tempList);
+        }
+
+        //diagonal l-r
+        for (int i = 2; i < Col; i++)
+        {
+            tempList.Clear();
+            for (int j = 0; j < i; j++)
+            {
+                tempList.Add(_squareHandlers[i-j, j]);
+            }
+
+            ScoreCheck(tempList);
+        }
+        
+        //diagonal l-r
+        for (int i = 1; i < Col - 2; i++)
+        {
+            tempList.Clear();
+            for (int j = 0; j < Row - i; j++)
+            {
+                tempList.Add(_squareHandlers[i+j, Col - 1 - j]);
+            }
+            ScoreCheck(tempList);
+        }
+
+        
+        //diagonal r-l
+        for (int i = Col - 3; i >= 1; i--)
+        {
+            tempList.Clear();
+            for (int j = 0; j < Col - i; j++)
+            {
+                tempList.Add(_squareHandlers[i+j, j]);
+            }
+
+            ScoreCheck(tempList);
+        }
+        
+        foreach (var squareHandler in _squareHandlers)
+        {
+            if (squareHandler.isScore)
+            {
+                squareHandler.Score();
+            }
+        }
+        
+        //diagonal r-l
+        for (int i = 2; i < Col - 1; i++)
+        {
+            tempList.Clear();
+            for (int j = 0; j < i; j++)
+            {
+                tempList.Add(_squareHandlers[i-j, Row - 1 - j]);
+            }
+
+            ScoreCheck(tempList);
+        }
+        
+        foreach (var squareHandler in _squareHandlers)
+        {
+            if (squareHandler.isScore)
+            {
+                squareHandler.Score();
+            }
+        }
+    }
+
+    private void ScoreCheck(List<SquareHandler> checkList)
+    {
+        int bonus = 0;
+        bool isBonus = false;
+        var scoreList = new List<SquareHandler>();
+        int countBall = 1;
+        scoreList.Clear();
+        SquareHandler root = checkList[0];
+        scoreList.Add(root);
+        for (int j = 1; j < checkList.Count; j++)
+        {
+            if (!checkList[j].hasBall || !root.hasBall || checkList[j].ball.color != root.ball.color)
+            {
+                countBall = 1;
+                root = checkList[j];
+                scoreList.Clear();
+                scoreList.Add(root);
+            }
+            else
+            {
+                countBall++;
+                root = checkList[j];
+                scoreList.Add(root);
+                if (countBall >= 3)
+                {
+                    scoreList.ForEach(square => square.isScore = true);
+                }
+
+                if (countBall >= 5 && !isBonus)
+                {
+                    isBonus = true;
+                    bonus++;
+                }
+            }
+        }
+    }
+
+    #endregion
 }

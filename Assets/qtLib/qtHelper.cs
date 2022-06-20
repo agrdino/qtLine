@@ -70,7 +70,7 @@ public class qtHelper
     
     public static GameObject FindObjectInRootIncludingInactive(string name)
     {
-        Scene scene = SceneManager.GetActiveScene();
+        UnityEngine.SceneManagement.Scene scene = SceneManager.GetActiveScene();
         if (!scene.isLoaded)
         {
             Debug.LogError("No scene loaded");

@@ -5,3 +5,10 @@ using UnityEngine;
 public class Modle 
 {
 }
+
+public enum EBallState
+{
+    Normal,
+    Queue,
+    Ghost
+}

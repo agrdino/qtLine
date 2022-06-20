@@ -1,11 +1,9 @@
-using System.Collections.Generic;
+using _Scripts.Scene;
 using _Scripts.System;
-using UnityEngine;
-using UnityEngine.UI;
 
-namespace _Scripts.Scene.MainMenuScene
+namespace Scene.MenuScene
 {
-    public class MainMenuScene : sceneBase
+    public class MenuScene : sceneBase
     {
         #region ----- VARIABLE -----
 

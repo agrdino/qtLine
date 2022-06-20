@@ -1,13 +1,13 @@
-using System.Collections.Generic;
-using _Scripts.qtLib;
-using _Scripts.System;
-using TMPro;
-using UnityEngine;
-using UnityEngine.UI;
-namespace _Scripts.Scene.GameScene
+using _Scripts.Scene;
+
+namespace Scene.GameScene
 {
     public class GameScene : sceneBase
     {
+        #region ----- VARIABLE -----
+
+
+        #endregion
 
         #region ----- INITIALIZE -----
 
@@ -18,7 +18,6 @@ namespace _Scripts.Scene.GameScene
 
         public override void InitObject()
         {
-
         }
 
         protected override void InitEvent()
@@ -35,6 +34,7 @@ namespace _Scripts.Scene.GameScene
 
         public override void Show()
         {
+            GameManager.Instance.StartGame();
         }
 
         #endregion

@@ -41,3 +41,12 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Board
+    uniqueID: 4130200699
+    locked: 0
+  - name: Ball
+    uniqueID: 409843205
+    locked: 0
+  - name: BallMoving
+    uniqueID: 3972734509
+    locked: 0
