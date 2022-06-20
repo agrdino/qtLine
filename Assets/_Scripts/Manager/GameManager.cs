@@ -21,6 +21,7 @@ public class GameManager : qtSingleton<GameManager>
     private GameObject _board;
 
     private SquareHandler[,] _squareHandlers;
+    private List<SquareHandler> _squareForCheck;
     private List<SquareHandler> _ballQueue;
 
     private bool _isSetUp;
@@ -66,19 +67,23 @@ public class GameManager : qtSingleton<GameManager>
                 return;
             }
             
-            SquareHandler square = null;
-            do
+            var availableCount = _squareForCheck.FindAll(square => !square.hasBall).Count;
+            if (availableCount != 0)
             {
-                square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
-            } while (square.hasBall);
+                SquareHandler square = null;
+                do
+                {
+                    square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+                } while (square.hasBall);
 
-            var ball = target.ball;
-            _ballQueue.Remove(target);
-            _ballQueue.Add(square);
+                var ball = target.ball;
+                _ballQueue.Remove(target);
+                _ballQueue.Add(square);
             
-            square.ball = ball;
-            target.ball = null;
-            ball.transform.position = square.transform.position;
+                square.ball = ball;
+                target.ball = null;
+                ball.transform.position = square.transform.position;
+            }
         }
 
         selectedBall.ball.transform.position = target.transform.position;
@@ -94,7 +99,7 @@ public class GameManager : qtSingleton<GameManager>
         
         ScoreCheck();
 
-        if (EndCheck())
+        if (isEnd)
         {
             ((NotiPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Noti)).Initialize("You lose");
         }
@@ -129,6 +134,7 @@ public class GameManager : qtSingleton<GameManager>
 
         _board = FindObjectWithPath(UIManager.Instance.currentScene.gameObject, "Board");
         _squareHandlers ??= new SquareHandler[Col, Row];
+        _squareForCheck ??= new List<SquareHandler>();
         _ballQueue ??= new List<SquareHandler>();
 
         for (int row = 0; row < 9; row++)
@@ -142,6 +148,7 @@ public class GameManager : qtSingleton<GameManager>
                     tempSquare.Initialize(col, row);
                     tempSquare.gameObject.SetActive(true);
                     _squareHandlers[col, row] = tempSquare;
+                    _squareForCheck.Add(tempSquare);
                 }
                 else
                 {
@@ -149,6 +156,7 @@ public class GameManager : qtSingleton<GameManager>
                         DataManager.Instance.SquareDark, _board.transform).GetComponent<SquareHandler>();
                     tempSquare.Initialize(col, row);
                     _squareHandlers[col, row] = tempSquare;
+                    _squareForCheck.Add(tempSquare);
                 }
             }
         }
@@ -180,7 +188,12 @@ public class GameManager : qtSingleton<GameManager>
 
     private void NewTurn()
     {
-        for (int i = 0; i < 3; i++)
+        var availableCount = _squareForCheck.FindAll(square => !square.hasBall).Count;
+        if (availableCount >= 3)
+        {
+            availableCount = 3;
+        }
+        for (int i = 0; i < availableCount; i++)
         {
             SquareHandler square = null;
             do
@@ -201,18 +214,7 @@ public class GameManager : qtSingleton<GameManager>
 
     }
 
-    public bool EndCheck()
-    {
-        foreach (var squareHandler in _squareHandlers)
-        {
-            if (!squareHandler.hasBall || squareHandler.ball.ballState == EBallState.Queue)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    private bool isEnd => _squareForCheck.Find(square => !square.hasBall || square.ball.ballState == EBallState.Queue) == null;
 
     private void ScoreCheck()
     {
