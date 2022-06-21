@@ -34,6 +34,7 @@ namespace Scene.GameScene
         {
             base.Initialize();
             _txtScore.text = "00";
+            _txtHighScore.text = DataManager.Instance.playerData.best.ToString();
         }
 
         public override void InitObject()
@@ -72,12 +73,7 @@ namespace Scene.GameScene
 
         private void Update()
         {
-            if (GameManager.Instance.IsEnd)
-            {
-                return;
-            }
-            var tempTime = Time.time - _time;
-            _txtTime.text = $"{(int)(tempTime/60) : 00} :{(int)(tempTime % 60) : 00}";
+            _txtTime.text = $"{(int)(GameManager.Instance.playTime/60) : 00} :{(int)(GameManager.Instance.playTime % 60) : 00}";
         }
 
         #region ----- ANIMATION -----
@@ -91,7 +87,6 @@ namespace Scene.GameScene
 
         public override void Hide()
         {
-            GameManager.Instance.ClearGame();
             base.Hide();
         }
 
@@ -107,7 +102,7 @@ namespace Scene.GameScene
 
         private void OnButtonUndoClick()
         {
-            
+            GameManager.Instance.Undo();
         }
 
         private void OnButtonBackClick()
@@ -116,7 +111,7 @@ namespace Scene.GameScene
                 "Do you want to\nforfeit this game?\nYou can continue later",
                 delegate
                 {
-                    GameManager.Instance.ClearGame();
+                    GameManager.Instance.ClearGame(true);
                     UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
                 });
         }

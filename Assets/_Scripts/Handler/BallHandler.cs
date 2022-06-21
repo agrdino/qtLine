@@ -43,6 +43,10 @@ namespace _Scripts.Handler
         {
             InitObject();
             this.state = state;
+            if (state == EBallState.Queue)
+            {
+                transform.localScale = 0.3f * Vector3.one;
+            }
             this.color = color;
             _imgBall.color = DataManager.Instance.colorBank[color];
             this.type = type;

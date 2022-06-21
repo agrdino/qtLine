@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using _Scripts.Handler;
 using UnityEngine;
 
 public class DataManager : qtSingleton<DataManager>
@@ -54,18 +56,63 @@ public class DataManager : qtSingleton<DataManager>
 
 
     private PlayerData _playerData;
-
-    public int highScore => _playerData.best;
-    #endregion
-    
-    #region ----- PUBLIC FUNCTION -----
-    public void SaveData()
+    public PlayerData playerData
     {
-        // if (playerData != null)
-        // {
-        //     string data = JsonUtility.ToJson(playerData);            
-        //     File.WriteAllText($"{DataPath}/PlayerData.dat", data);
-        // }
+        get
+        {
+            if (_playerData == null)
+            {
+                LoadData();
+            }
+
+            return _playerData;
+        }
+    }
+
+    #endregion
+
+    protected override void Init()
+    {
+        base.Init();
+        DataPath = Application.persistentDataPath;
+    }
+
+    #region ----- PUBLIC FUNCTION -----
+    public void SaveData(bool isSaveGame)
+    {
+        if (_playerData != null)
+        {
+            if (GameManager.Instance.IsEnd)
+            {
+                _playerData.best = GameManager.Instance.score >= _playerData.best
+                    ? GameManager.Instance.score
+                    : _playerData.best;
+            }
+            _playerData.balls.Clear();
+            _playerData.isSaving = isSaveGame;
+            if (isSaveGame)
+            {
+                _playerData.score = GameManager.Instance.score;
+                _playerData.playTime = GameManager.Instance.playTime;
+                foreach (var square in GameManager.Instance.squareForCheck)
+                {
+                    if (square.ball != null)
+                    {
+                        _playerData.balls.Add(new Ball()
+                        {
+                            col = square.col,
+                            row = square.row,
+                            color = square.ball.color,
+                            state = square.ball.state,
+                            type = square.ball.type
+                        });
+                    }
+                }
+            }
+            string data = JsonUtility.ToJson(_playerData);    
+            Debug.Log(data);
+            File.WriteAllText($"{DataPath}/PlayerData.dat", data);
+        }
     }
 
     #endregion
@@ -74,15 +121,15 @@ public class DataManager : qtSingleton<DataManager>
 
     private void LoadData()
     {
-        // if (File.Exists($"{DataPath}/PlayerData.dat"))
-        // {
-        //     playerData = JsonUtility.FromJson<PlayerData>(File.ReadAllText($"{DataPath}/PlayerData.dat"));
-        // }
-        // else
-        // {
-        //     playerData = new PlayerData();
-        //     SaveData();
-        // }
+        if (File.Exists($"{DataPath}/PlayerData.dat"))
+        {
+            _playerData = JsonUtility.FromJson<PlayerData>(File.ReadAllText($"{DataPath}/PlayerData.dat"));
+        }
+        else
+        {
+            _playerData = new PlayerData();
+            SaveData(false);
+        }
     }
 
     #endregion

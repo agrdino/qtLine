@@ -1,6 +1,7 @@
 using _Scripts.qtLib;
 using _Scripts.Scene;
 using _Scripts.System;
+using UnityEngine;
 using UnityEngine.UI;
 using static qtHelper;
 
@@ -20,12 +21,13 @@ namespace Scene.MenuScene
         public override void Initialize()
         {
             base.Initialize();
+            _btnContinue.interactable = DataManager.Instance.playerData.isSaving;
         }
         
         public override void InitObject()
         {
             _btnPlay = FindObjectWithPath(gameObject, "btnPlay").GetComponent<qtButton>();
-            _btnContinue = FindObjectWithPath(gameObject, "btnPlay").GetComponent<qtButton>();
+            _btnContinue = FindObjectWithPath(gameObject, "btnContinue").GetComponent<qtButton>();
         }
         
         protected override void InitEvent()
@@ -50,12 +52,13 @@ namespace Scene.MenuScene
 
         private void OnButtonPlayClick()
         {
+            DataManager.Instance.playerData.isSaving = false;
             UIManager.Instance.ShowScene(qtScene.EScene.GameScene);
         }
 
         private void OnButtonContinueClick()
         {
-            //Todo
+            UIManager.Instance.ShowScene(qtScene.EScene.GameScene);
         }
 
         #endregion
