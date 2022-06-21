@@ -109,7 +109,10 @@ namespace _Scripts.qtLib
             GUILayout.Space(20);
             base.OnInspectorGUI();
 
-            EditorUtility.SetDirty(target);
+            if (GUI.changed)
+            {
+                EditorUtility.SetDirty(target);
+            }
         }
     }
 #endif

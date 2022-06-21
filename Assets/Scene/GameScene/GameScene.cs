@@ -84,6 +84,7 @@ namespace Scene.GameScene
 
         public override void Show()
         {
+            base.Show();
             GameManager.Instance.StartGame();
             _time = Time.time;
         }

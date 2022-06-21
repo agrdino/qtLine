@@ -1,5 +1,8 @@
+using _Scripts.qtLib;
 using _Scripts.Scene;
 using _Scripts.System;
+using UnityEngine.UI;
+using static qtHelper;
 
 namespace Scene.MenuScene
 {
@@ -7,7 +10,9 @@ namespace Scene.MenuScene
     {
         #region ----- VARIABLE -----
 
-        
+        private Button _btnPlay;
+        private Button _btnContinue;
+
         #endregion
         
         #region ----- INITIALIZE -----
@@ -15,40 +20,42 @@ namespace Scene.MenuScene
         public override void Initialize()
         {
             base.Initialize();
-
         }
         
         public override void InitObject()
         {
+            _btnPlay = FindObjectWithPath(gameObject, "btnPlay").GetComponent<qtButton>();
+            _btnContinue = FindObjectWithPath(gameObject, "btnPlay").GetComponent<qtButton>();
         }
         
         protected override void InitEvent()
         {
+            _btnContinue.onClick.AddListener(OnButtonContinueClick);
+            _btnPlay.onClick.AddListener(OnButtonPlayClick);
         }
-
+        
         public override void RemoveEvent()
         {
+            _btnContinue.onClick.RemoveAllListeners();
+            _btnPlay.onClick.RemoveAllListeners();
         }
 
         #endregion
 
         #region ----- ANIMATION -----
-
-        public override void Show()
-        {
-            UIManager.Instance.ignoreCast = false;
-        }
-
-        public override void Hide()
-        {
-        }
-
+        
         #endregion
 
         #region ----- BUTTON EVENT -----
 
-        public void OnButtonHomeClick()
+        private void OnButtonPlayClick()
         {
+            UIManager.Instance.ShowScene(qtScene.EScene.GameScene);
+        }
+
+        private void OnButtonContinueClick()
+        {
+            //Todo
         }
 
         #endregion
