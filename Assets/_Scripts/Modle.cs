@@ -21,12 +21,12 @@ public class Ball
 
 public enum EBallState
 {
-    Normal,
-    Queue,
+    Normal = 0,
+    Queue = 1,
 }
 
 public enum EBallType
 {
-    Normal,
-    Ghost
+    Normal = 0,
+    Ghost = 1
 }

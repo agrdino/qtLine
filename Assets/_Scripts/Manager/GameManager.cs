@@ -1,13 +1,16 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using _Prefab.Popup.NotiPopup;
+using _Prefab.Popup.YesNoPopup;
 using _Scripts.Handler;
 using _Scripts.System;
 using DG.Tweening;
 using Scene.GameScene;
 using UnityEngine;
 using static qtHelper;
+using Random = UnityEngine.Random;
 
 public class GameManager : qtSingleton<GameManager>
 {
@@ -17,6 +20,11 @@ public class GameManager : qtSingleton<GameManager>
 
     #region ----- VARIABLE -----
 
+    public int level
+    {
+        get;
+        private set;
+    }
     
     private const int Col = 9;
     private const int Row = 9;
@@ -37,6 +45,9 @@ public class GameManager : qtSingleton<GameManager>
         private set;
     }
     public int score { get; private set; }
+
+    private Coroutine _initCoroutine;
+    private Coroutine _moveCoroutine;
     
     #endregion
 
@@ -95,7 +106,13 @@ public class GameManager : qtSingleton<GameManager>
 
         if (selectedBall.ball.type == EBallType.Ghost)
         {
-            
+            var center = _squareHandlers[selectedBall.col, target.row];
+            selectedBall.node = center;
+            center.node = target;
+            target.ball = selectedBall.ball;
+            _moveCoroutine = StartCoroutine(Move(selectedBall));
+            selectedBall.ball = null;
+            selectedBall = null;
         }
         else
         {
@@ -109,24 +126,10 @@ public class GameManager : qtSingleton<GameManager>
             {
                 Debug.LogWarning("Move");
                 target.ball = selectedBall.ball;
-                StartCoroutine(Move(selectedBall));
+                _moveCoroutine = StartCoroutine(Move(selectedBall));
                 selectedBall.ball = null;
                 selectedBall = null;
-            
-                _ballQueue.ForEach(square =>
-                {
-                    square.ball.Grow();
-                });
-                _ballQueue.Clear();
-            
-                ScoreCalculate();
-            
-                if (isEnd)
-                {
-                    ((NotiPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Noti)).Initialize("You lose");
-                }
-            
-                NewTurn();
+                
             }
             else
             {
@@ -135,7 +138,32 @@ public class GameManager : qtSingleton<GameManager>
             }
         }
     }
+
+    public void RestartGame()
+    {
+        ClearGame();
+        StartGame();
+    } 
     
+    public void ClearGame()
+    {
+        if (_moveCoroutine != null)
+        {
+            StopCoroutine(_moveCoroutine);
+        }
+        
+        if (_initCoroutine != null)
+        {
+            StopCoroutine(_initCoroutine);
+        }
+        
+        _ballQueue.ForEach(square =>
+        {
+            square.ball = null;
+        });
+        _ballQueue.Clear();
+        qtPooling.Instance.InActiveAll(DataManager.Instance.Ball.name);
+    }
 
     #endregion
 
@@ -144,20 +172,17 @@ public class GameManager : qtSingleton<GameManager>
     private void Initialize()
     {
         score = 0;
+        level = 3;
+        IsEnd = false;
+        ((GameScene) UIManager.Instance.currentScene).RestartGame();
+        ((GameScene) UIManager.Instance.currentScene).UpdateUI();
 
         if (!_isSetUp)
         {
             SetUpBoard();
         }
         
-        //Todo: Reset board
-        //_squareHandlers.Clear();
-        
-        //Todo: Spawn ball
-        _ballQueue.ForEach(ball => ball.gameObject.SetActive(false));
-        _ballQueue.Clear();
-
-        StartCoroutine(InitBall());
+        _initCoroutine = StartCoroutine(InitBall());
     }
 
     private void SetUpBoard()
@@ -299,15 +324,36 @@ public class GameManager : qtSingleton<GameManager>
     {
         var temp = startPosition;
         var ball = startPosition.ball;
-        var moveCoroutine = new WaitForSeconds(0.01f);
+        var moveCoroutine = new WaitForSeconds(0.025f);
         while (temp.node != null)
         {
-            ball.transform.DOMove(temp.node.transform.position, 0.01f);
+            ball.transform.DOMove(temp.node.transform.position, 0.025f);
             temp = temp.node;
             yield return moveCoroutine;
         }
-
         ball.transform.position = temp.transform.position;
+        _ballQueue.ForEach(square =>
+        {
+            square.ball.Grow();
+        });
+        _ballQueue.Clear();
+            
+        ScoreCalculate();
+            
+        if (isEnd)
+        {
+            IsEnd = true;
+            ((LosePopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Lose)).Initialize(delegate
+            {
+                RestartGame();
+            }, delegate
+            {
+                ClearGame();
+                UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
+            });
+            yield break;
+        }
+        NewTurn();
     }
 
     private void NewTurn()
@@ -328,7 +374,12 @@ public class GameManager : qtSingleton<GameManager>
             var ball = qtPooling.Instance.Spawn(DataManager.Instance.Ball.name, DataManager.Instance.Ball, UIManager.Instance.currentScene.transform).GetComponent<BallHandler>();
             
             var randomColor = Random.Range(0, DataManager.Instance.colorBank.Length);
-            ball.Initialize(randomColor, EBallState.Queue);
+            int type = 0;
+            if (level >= 5)
+            {
+                type = Random.Range(0, 2);
+            }
+            ball.Initialize(randomColor, EBallState.Queue, (EBallType)type);
             ball.transform.localScale = 0.3f * Vector3.one;
 
             ball.transform.position = square.transform.position;
@@ -336,8 +387,10 @@ public class GameManager : qtSingleton<GameManager>
             _ballQueue.Add(square);
         }
 
+        ((GameScene)UIManager.Instance.currentScene).UpdateQueue(_ballQueue);
     }
 
+    public bool IsEnd;
     private bool isEnd => _squareForCheck.Find(square => !square.hasBall || square.ball.state == EBallState.Queue) == null;
 
     private void ScoreCalculate()
@@ -349,6 +402,8 @@ public class GameManager : qtSingleton<GameManager>
 
         score += _squareForCheck.FindAll(square => square.isScore).Count;
 
+        level = 3 + score / 50;
+        level = Math.Clamp(level, 3, DataManager.Instance.colorBank.Length);
         foreach (var squareHandler in _squareHandlers)
         {
             if (squareHandler.isScore)
@@ -389,7 +444,6 @@ public class GameManager : qtSingleton<GameManager>
                 scoreList.Add(root);
                 if (countBall >= 3)
                 {
-                    Debug.Log(scoreList.Count);
                     scoreList.ForEach(square => square.isScore = true);
                 }
 
@@ -404,7 +458,6 @@ public class GameManager : qtSingleton<GameManager>
         return bonus;
     }
     
-
     private int count;
     private bool FindPath(SquareHandler startPosition, SquareHandler targetPosition)
     {

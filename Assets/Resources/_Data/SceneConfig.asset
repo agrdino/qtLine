@@ -16,6 +16,12 @@ MonoBehaviour:
   - name: NotiPopup
     id: 0
     prefab: {fileID: 969388556564834411, guid: 7ebdce6368d46cb4190f951faa6049c0, type: 3}
+  - name: YesNoPopup
+    id: 1
+    prefab: {fileID: 7586598429470792583, guid: eb5d2b00bd714b0499371acfec145dda, type: 3}
+  - name: LosePopup
+    id: 7
+    prefab: {fileID: 3778865014164393241, guid: a1de33d531b5b4f43a57fcd1b2f46511, type: 3}
   sences:
   - name: IntroScene
     id: 0

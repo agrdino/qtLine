@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using _Prefab.Popup.YesNoPopup;
+using _Scripts.Handler;
 using _Scripts.Scene;
+using _Scripts.System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -38,20 +41,41 @@ namespace Scene.GameScene
             _txtTime = FindObjectWithPath(gameObject, "TopPanel/imgTimeHolder/txtTime").GetComponent<TextMeshProUGUI>();
             _txtScore = FindObjectWithPath(gameObject, "TopPanel/imgScoreHolder/txtScore").GetComponent<TextMeshProUGUI>();
             _txtHighScore = FindObjectWithPath(gameObject, "TopPanel/imgBestHolder/txtBest").GetComponent<TextMeshProUGUI>();
+
+            _imgNextBalls ??= new List<Image>();
+            var pnlBall = FindObjectWithPath(gameObject, "TopPanel/pnlNextBall/ballHolder");
+            for (int i = 1; i < 4; i++)
+            {
+                _imgNextBalls.Add(FindObjectWithPath(pnlBall, $"imgBall{i}").GetComponent<Image>());
+            }
+
+            _btnBackToMenu = FindObjectWithPath(gameObject, "BotPanel/btnBack").GetComponent<Button>();
+            _btnUndo = FindObjectWithPath(gameObject, "BotPanel/btnUndo").GetComponent<Button>();
+            _btnRestart = FindObjectWithPath(gameObject, "BotPanel/btnRestart").GetComponent<Button>();
         }
 
         protected override void InitEvent()
         {
+            _btnBackToMenu.onClick.AddListener(OnButtonBackClick);
+            _btnUndo.onClick.AddListener(OnButtonUndoClick);
+            _btnRestart.onClick.AddListener(OnButtonRestartClick);
         }
-
+        
         public override void RemoveEvent()
         {
+            _btnRestart.onClick.RemoveAllListeners();
+            _btnUndo.onClick.RemoveAllListeners();
+            _btnBackToMenu.onClick.RemoveAllListeners();
         }
 
         #endregion
 
         private void Update()
         {
+            if (GameManager.Instance.IsEnd)
+            {
+                return;
+            }
             var tempTime = Time.time - _time;
             _txtTime.text = $"{(int)(tempTime/60) : 00} :{(int)(tempTime % 60) : 00}";
         }
@@ -64,27 +88,67 @@ namespace Scene.GameScene
             _time = Time.time;
         }
 
-        #endregion
-
-        #region ----- BUTTON EVENT -----
-
-        private void OnButtonSkillClick(int id)
+        public override void Hide()
         {
+            GameManager.Instance.ClearGame();
+            base.Hide();
         }
 
         #endregion
 
+        #region ----- BUTTON EVENT -----
+
+
+        private void OnButtonRestartClick()
+        {
+            GameManager.Instance.RestartGame();
+        }
+
+        private void OnButtonUndoClick()
+        {
+            
+        }
+
+        private void OnButtonBackClick()
+        {
+            ((YesNoPopup) UIManager.Instance.ShowPopup(qtScene.EPopup.YesNo)).Initialize(
+                "Do you want to\nforfeit this game?\nYou can continue later",
+                delegate
+                {
+                    GameManager.Instance.ClearGame();
+                    UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
+                });
+        }
+
+        
+        #endregion
+
         #region ----- PUBLIC FUNCTION -----
+
+        public void RestartGame()
+        {
+            _time = Time.time;
+        }
         
         public void UpdateUI()
         {
             _txtScore.text = GameManager.Instance.score.ToString();
         }
 
-        public void SkillPlayed(int id)
+        public void UpdateQueue(List<SquareHandler> queue)
         {
+            for (int i = 0; i < _imgNextBalls.Count; i++)
+            {
+                if (i >= queue.Count)
+                {
+                    _imgNextBalls[i].gameObject.SetActive(false);
+                    continue;
+                }
+                _imgNextBalls[i].gameObject.SetActive(true);
+                _imgNextBalls[i].color = DataManager.Instance.colorBank[queue[i].ball.color];
+            }
         }
-
+        
         #endregion
     }
 }

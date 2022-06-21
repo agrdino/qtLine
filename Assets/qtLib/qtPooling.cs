@@ -76,6 +76,16 @@ public class qtPooling : qtSingleton<qtPooling>
         var pool = _pools[name];
         return pool.Spawn(prefab, position, rotation, parent).GetComponent<T>();
     }
+
+    public void InActiveAll(string name)
+    {
+        if (_pools == null || !_pools.ContainsKey(name))
+        {
+            return;
+        }
+        
+        _pools[name].InActiveAll();
+    }
 }
 
 public class ObjectPool
@@ -137,5 +147,11 @@ public class ObjectPool
         var newItem = Object.Instantiate(prefab, position, rotation, parent);
         _pool.Add(newItem);
         return newItem;
+    }
+
+    public void InActiveAll()
+    {
+        _pool ??= new List<GameObject>();
+        _pool.ForEach(x => x.gameObject.SetActive(false));
     }
 }

@@ -51,7 +51,11 @@ public class DataManager : qtSingleton<DataManager>
             return _ballPrefab;
         }
     }
-    
+
+
+    private PlayerData _playerData;
+
+    public int highScore => _playerData.best;
     #endregion
     
     #region ----- PUBLIC FUNCTION -----

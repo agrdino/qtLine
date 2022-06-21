@@ -46,6 +46,7 @@ namespace _Scripts.Handler
             this.color = color;
             _imgBall.color = DataManager.Instance.colorBank[color];
             this.type = type;
+            transform.GetChild(0).gameObject.SetActive(type == EBallType.Ghost);
         }
 
         public void Move(Vector3[] movePath)
