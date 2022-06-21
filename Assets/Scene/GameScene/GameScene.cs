@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using _Prefab.Popup.YesNoPopup;
 using _Scripts.Handler;
+using _Scripts.qtLib;
 using _Scripts.Scene;
 using _Scripts.System;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,6 +25,9 @@ namespace Scene.GameScene
         private Button _btnBackToMenu;
         private Button _btnUndo;
         private Button _btnRestart;
+
+        private qtButton _btnBonusBall; 
+        private Image _imgBonusBall; 
 
         private float _time;
         
@@ -50,9 +55,11 @@ namespace Scene.GameScene
                 _imgNextBalls.Add(FindObjectWithPath(pnlBall, $"imgBall{i}").GetComponent<Image>());
             }
 
-            _btnBackToMenu = FindObjectWithPath(gameObject, "BotPanel/btnBack").GetComponent<Button>();
-            _btnUndo = FindObjectWithPath(gameObject, "BotPanel/btnUndo").GetComponent<Button>();
-            _btnRestart = FindObjectWithPath(gameObject, "BotPanel/btnRestart").GetComponent<Button>();
+            _btnBackToMenu = FindObjectWithPath(gameObject, "BotPanel/btnBack").GetComponent<qtButton>();
+            _btnUndo = FindObjectWithPath(gameObject, "BotPanel/btnUndo").GetComponent<qtButton>();
+            _btnRestart = FindObjectWithPath(gameObject, "BotPanel/btnRestart").GetComponent<qtButton>();
+            _btnBonusBall = FindObjectWithPath(gameObject, "TopPanel/btnBonusBall").GetComponent<qtButton>();
+            _imgBonusBall = FindObjectWithPath(gameObject, "TopPanel/btnBonusBall/imgBonusBall").GetComponent<Image>();
         }
 
         protected override void InitEvent()
@@ -60,6 +67,7 @@ namespace Scene.GameScene
             _btnBackToMenu.onClick.AddListener(OnButtonBackClick);
             _btnUndo.onClick.AddListener(OnButtonUndoClick);
             _btnRestart.onClick.AddListener(OnButtonRestartClick);
+            _btnBonusBall.onClick.AddListener(OnButtonBonusBallClick);
         }
         
         public override void RemoveEvent()
@@ -67,6 +75,7 @@ namespace Scene.GameScene
             _btnRestart.onClick.RemoveAllListeners();
             _btnUndo.onClick.RemoveAllListeners();
             _btnBackToMenu.onClick.RemoveAllListeners();
+            _btnBonusBall.onClick.RemoveAllListeners();
         }
 
         #endregion
@@ -81,6 +90,7 @@ namespace Scene.GameScene
         public override void Show()
         {
             base.Show();
+            _btnBonusBall.gameObject.SetActive(false);
             GameManager.Instance.StartGame();
             _time = Time.time;
         }
@@ -104,6 +114,11 @@ namespace Scene.GameScene
         {
             GameManager.Instance.Undo();
         }
+        
+        private void OnButtonBonusBallClick()
+        {
+            GameManager.Instance.BonusBall();
+        }
 
         private void OnButtonBackClick()
         {
@@ -121,9 +136,25 @@ namespace Scene.GameScene
 
         #region ----- PUBLIC FUNCTION -----
 
-        public void RestartGame()
+        public void BonusBall(int color, bool show = true)
         {
-            _time = Time.time;
+            _btnBonusBall.DOKill();
+            if (!show)
+            {
+                _btnBonusBall.transform.DOLocalMoveY(0, 0.5f).OnComplete(() => _btnBonusBall.gameObject.SetActive(false));
+                return;
+            }
+            
+            if (color == -1)
+            {
+                return;
+            }
+
+            _imgBonusBall.color = DataManager.Instance.colorBank[color];
+            _btnBonusBall.transform.DOLocalMoveY(-200, 0.5f).OnStart(() =>
+            {
+                _btnBonusBall.gameObject.SetActive(true);
+            });
         }
         
         public void UpdateUI()

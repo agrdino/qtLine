@@ -47,6 +47,10 @@ namespace _Scripts.Handler
             {
                 transform.localScale = 0.3f * Vector3.one;
             }
+            else
+            {
+                transform.localScale = 0.8f * Vector3.one;
+            }
             this.color = color;
             _imgBall.color = DataManager.Instance.colorBank[color];
             this.type = type;
@@ -61,7 +65,7 @@ namespace _Scripts.Handler
         public void Grow()
         {
             state = EBallState.Normal;
-            transform.DOScale(0.9f * Vector3.one, 0.25f);
+            transform.DOScale(0.8f * Vector3.one, 0.25f);
         }
     }
 }

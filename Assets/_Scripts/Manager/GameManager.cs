@@ -58,6 +58,12 @@ public class GameManager : qtSingleton<GameManager>
         get;
         private set;
     }
+
+    public int bonusBall
+    {
+        get;
+        private set;
+    }
     public int score { get; private set; }
 
     private Coroutine _initCoroutine;
@@ -68,6 +74,7 @@ public class GameManager : qtSingleton<GameManager>
     public void StartGame()
     {
         _startTime = Time.time;
+        bonusBall = -1;
         Initialize();
     }
 
@@ -85,6 +92,24 @@ public class GameManager : qtSingleton<GameManager>
     
     public void TargetSelect(SquareHandler target)
     {
+        if (_isBonusBall)
+        {
+            CacheStep();
+            _isBonusBall = false;
+            if (target.ball != null)
+            {
+                target.ball.gameObject.SetActive(false);
+            }
+            var bonusBall = qtPooling.Instance.Spawn<BallHandler>(DataManager.Instance.Ball.name,
+                DataManager.Instance.Ball, UIManager.Instance.currentScene.transform);
+            bonusBall.Initialize(this.bonusBall, EBallState.Normal);
+            target.ball = bonusBall;
+            bonusBall.transform.position = target.transform.position;
+            ScoreCalculate();
+            ((GameScene)UIManager.Instance.currentScene).BonusBall(-1, false);
+            this.bonusBall = -1;
+            return;
+        }
         if (selectedBall == null)
         {
             if (target.ball == null || target.ball.state == EBallState.Queue)
@@ -188,6 +213,7 @@ public class GameManager : qtSingleton<GameManager>
             square.ball = null;
         }
         _ballQueue.Clear();
+        score = step.score;
         step.balls.ForEach(ball =>
         {
             var newBall = qtPooling.Instance.Spawn<BallHandler>(DataManager.Instance.Ball.name, DataManager.Instance.Ball, UIManager.Instance.currentScene.transform);
@@ -202,6 +228,18 @@ public class GameManager : qtSingleton<GameManager>
         
         ((GameScene) UIManager.Instance.currentScene).UpdateUI();
         ((GameScene) UIManager.Instance.currentScene).UpdateQueue(_ballQueue);
+    }
+
+    private bool _isBonusBall;
+    public void BonusBall()
+    {
+        if (bonusBall == -1)
+        {
+            return;
+        }
+
+        _isBonusBall = true;
+        selectedBall = null;
     }
     
     public void ClearGame(bool isSave = false)
@@ -416,8 +454,8 @@ public class GameManager : qtSingleton<GameManager>
             var randomColor = Random.Range(0, DataManager.Instance.colorBank.Length);
             
             var ball = qtPooling.Instance.Spawn<BallHandler>(DataManager.Instance.Ball.name, DataManager.Instance.Ball, UIManager.Instance.currentScene.transform);
-            ball.transform.localScale = 0.3f * Vector3.one;
             ball.Initialize(randomColor, EBallState.Normal);
+            ball.transform.localScale = 0.3f * Vector3.one;
             ball.Grow();
 
             ball.transform.position = square.transform.position;
@@ -445,7 +483,16 @@ public class GameManager : qtSingleton<GameManager>
         _ballQueue.Clear();
             
         ScoreCalculate();
-            
+
+        if (Random.Range(0, 100) < 20)
+        {
+            if (bonusBall == -1)
+            {
+                bonusBall = Random.Range(0, level);
+                ((GameScene)UIManager.Instance.currentScene).BonusBall(bonusBall);
+            }
+        }
+
         if (isEnd)
         {
             DataManager.Instance.SaveData(false);
@@ -584,10 +631,8 @@ public class GameManager : qtSingleton<GameManager>
         return bonus;
     }
     
-    private int count;
     private bool FindPath(SquareHandler startPosition, SquareHandler targetPosition)
     {
-        count++;
         if (startPosition.Equals(targetPosition))
         {
             return true;
@@ -608,10 +653,6 @@ public class GameManager : qtSingleton<GameManager>
         
         while (availableMove.Count > 0)
         {
-            if (count > 1000)
-            {
-                break;
-            }
             startPosition.node = availableMove.Pop();
             if (_path[startPosition.node])
             {
