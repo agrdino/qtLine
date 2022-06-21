@@ -198,6 +198,10 @@ public class GameManager : qtSingleton<GameManager>
 
     public void Undo()
     {
+        if (!DataManager.Instance.defaulLevel.undoAllow)
+        {
+            return;
+        }
         if (_steps.Count == 0)
         {
             return;
@@ -444,7 +448,7 @@ public class GameManager : qtSingleton<GameManager>
     {
         var delayCoroutine = new WaitForSeconds(0.25f);
         yield return delayCoroutine;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < DataManager.Instance.defaulLevel.startBalls; i++)
         {
             SquareHandler square = null;
             do
@@ -484,15 +488,6 @@ public class GameManager : qtSingleton<GameManager>
             
         ScoreCalculate();
 
-        if (Random.Range(0, 100) < 20)
-        {
-            if (bonusBall == -1)
-            {
-                bonusBall = Random.Range(0, level);
-                ((GameScene)UIManager.Instance.currentScene).BonusBall(bonusBall);
-            }
-        }
-
         if (isEnd)
         {
             DataManager.Instance.SaveData(false);
@@ -503,6 +498,18 @@ public class GameManager : qtSingleton<GameManager>
                 UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
             });
             yield break;
+        }
+        
+        if (DataManager.Instance.defaulLevel.hasBonusBall)
+        {
+            if (Random.Range(0, 100) < 20)
+            {
+                if (bonusBall == -1)
+                {
+                    bonusBall = Random.Range(0, level);
+                    ((GameScene)UIManager.Instance.currentScene).BonusBall(bonusBall);
+                }
+            }
         }
         
         NewTurn();
@@ -532,9 +539,9 @@ public class GameManager : qtSingleton<GameManager>
     private void NewTurn()
     {
         var availableCount = squareForCheck.FindAll(square => !square.hasBall).Count;
-        if (availableCount >= 3)
+        if (availableCount >= DataManager.Instance.defaulLevel.queueBalls)
         {
-            availableCount = 3;
+            availableCount = DataManager.Instance.defaulLevel.queueBalls;
         }
         for (int i = 0; i < availableCount; i++)
         {

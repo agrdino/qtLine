@@ -69,6 +69,21 @@ public class DataManager : qtSingleton<DataManager>
         }
     }
 
+    private LevelData _levelData;
+
+    public Level defaulLevel
+    {
+        get
+        {
+            if (_levelData == null)
+            {
+                _levelData = JsonUtility.FromJson<LevelData>(Resources.Load<TextAsset>("_Data/LevelData").text);
+            }
+
+            return _levelData.levelData[0];
+        }
+    }
+
     #endregion
 
     protected override void Init()

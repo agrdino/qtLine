@@ -30,6 +30,43 @@ public class Ball
 }
 
 [Serializable]
+public class Level
+{
+    public string name;
+    public bool undoAllow;
+    public int startBalls;
+    public int queueBalls;
+    public bool hasBonusBall;
+    public int ratioActiveBonusBall;
+
+    public Level()
+    {
+        name = "Default level";
+    }
+
+    public void CreateTempLevel()
+    {
+        undoAllow = true;
+        startBalls = 8;
+        queueBalls = 3;
+        hasBonusBall = true;
+        ratioActiveBonusBall = 20;
+    }
+}
+
+[Serializable]
+public class LevelData
+{
+    public List<Level> levelData;
+
+    public LevelData()
+    {
+        levelData = new List<Level>();
+    }
+}
+
+
+[Serializable]
 public class Step
 {
     public List<Ball> balls;
