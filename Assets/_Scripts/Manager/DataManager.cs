@@ -40,7 +40,6 @@ public class DataManager : qtSingleton<DataManager>
     }
 
     private GameObject _ballPrefab;
-
     public GameObject Ball
     {
         get
@@ -51,6 +50,21 @@ public class DataManager : qtSingleton<DataManager>
             }
 
             return _ballPrefab;
+        }
+    }
+
+    private GameObject _fxExplosive;
+
+    public GameObject fxExplosive
+    {
+        get
+        {
+            if (_fxExplosive == null)
+            {
+                _fxExplosive = Resources.Load<GameObject>("_Prefabs/FX_Explosive");
+            }
+
+            return _fxExplosive;
         }
     }
 

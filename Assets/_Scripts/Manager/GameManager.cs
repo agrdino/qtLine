@@ -118,11 +118,13 @@ public class GameManager : qtSingleton<GameManager>
             }
             
             selectedBall = target;
+            selectedBall.ball.Select();
             return;
         }
         
         if (selectedBall != null && selectedBall.Equals(target))
         {
+            selectedBall.ball.Select();
             selectedBall = null;
             return;
         }
@@ -131,7 +133,9 @@ public class GameManager : qtSingleton<GameManager>
         {
             if (target.ball.state == EBallState.Normal)
             {
+                selectedBall.ball.Select();
                 selectedBall = target;
+                selectedBall.ball.Select();
                 return;
             }
             
@@ -162,6 +166,7 @@ public class GameManager : qtSingleton<GameManager>
             center.node = target;
             target.ball = selectedBall.ball;
             _moveCoroutine = StartCoroutine(Move(selectedBall));
+            selectedBall.ball.Select();
             selectedBall.ball = null;
             selectedBall = null;
         }
@@ -177,14 +182,40 @@ public class GameManager : qtSingleton<GameManager>
             {
                 Debug.LogWarning("Move");
                 CacheStep();
+                if (target.ball != null)
+                {
+                    if (target.ball.state == EBallState.Queue)
+                    {
+                        var availableCount = squareForCheck.FindAll(square => !square.hasBall).Count;
+                        if (availableCount != 0)
+                        {
+                            SquareHandler square = null;
+                            do
+                            {
+                                square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+                            } while (square.hasBall);
+
+                            var ball = target.ball;
+                            _ballQueue.Remove(target);
+                            _ballQueue.Add(square);
+            
+                            square.ball = ball;
+                            target.ball = null;
+                            ball.transform.position = square.transform.position;
+                        }
+                    }
+                }
+
                 target.ball = selectedBall.ball;
                 _moveCoroutine = StartCoroutine(Move(selectedBall));
+                selectedBall.ball.Select();
                 selectedBall.ball = null;
                 selectedBall = null;
             }
             else
             {
                 Debug.LogError("Cant find path!");
+                selectedBall.ball.Select();
                 selectedBall = null;
             }
         }
@@ -241,9 +272,14 @@ public class GameManager : qtSingleton<GameManager>
         {
             return;
         }
+        
+        if (selectedBall != null)
+        {
+            selectedBall.ball.Select();
+            selectedBall = null;
+        }
 
-        _isBonusBall = true;
-        selectedBall = null;
+        _isBonusBall = !_isBonusBall;
     }
     
     public void ClearGame(bool isSave = false)
@@ -502,7 +538,7 @@ public class GameManager : qtSingleton<GameManager>
         
         if (DataManager.Instance.defaulLevel.hasBonusBall)
         {
-            if (Random.Range(0, 100) < 20)
+            if (Random.Range(0, 100) < DataManager.Instance.defaulLevel.ratioActiveBonusBall)
             {
                 if (bonusBall == -1)
                 {

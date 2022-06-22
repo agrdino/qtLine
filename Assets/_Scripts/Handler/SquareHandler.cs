@@ -34,7 +34,7 @@ namespace _Scripts.Handler
 
         public void Score()
         {
-            ball.gameObject.SetActive(false);
+            ball.Score();
             isScore = false;
             ball = null;
         }

@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 7575548743990467201}
   - component: {fileID: 7841006434130515348}
   - component: {fileID: 2593621503902124029}
-  - component: {fileID: -865873011424596437}
   m_Layer: 5
   m_Name: squareDark
   m_TagString: Untagged
@@ -90,15 +89,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36b2b32ecb22e1b41a3767f0b4fca374, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hasBall: 0
---- !u!210 &-865873011424596437
-SortingGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3864845847557302452}
-  m_Enabled: 1
-  m_SortingLayerID: -164766597
-  m_SortingLayer: 1
-  m_SortingOrder: 0
+  isScore: 0
+  ball: {fileID: 0}
+  node: {fileID: 0}
+  img: {fileID: 0}

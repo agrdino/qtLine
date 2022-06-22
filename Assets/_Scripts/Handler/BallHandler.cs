@@ -15,7 +15,7 @@ namespace _Scripts.Handler
 
         private Image _imgBall;
         private bool _isInit;
-        private SortingGroup _sortingGroup;
+        private bool _isSelect;
 
         public EBallState state
         {
@@ -35,13 +35,13 @@ namespace _Scripts.Handler
             {
                 _isInit = true;
                 _imgBall = GetComponent<Image>();
-                _sortingGroup = GetComponent<SortingGroup>();
             }
         }
 
         public void Initialize(int color, EBallState state, EBallType type = EBallType.Normal)
         {
             InitObject();
+            _isSelect = false;
             this.state = state;
             if (state == EBallState.Queue)
             {
@@ -55,17 +55,45 @@ namespace _Scripts.Handler
             _imgBall.color = DataManager.Instance.colorBank[color];
             this.type = type;
             transform.GetChild(0).gameObject.SetActive(type == EBallType.Ghost);
+            _imgBall.transform.DOKill();
         }
-
-        public void Move(Vector3[] movePath)
-        {
-            //Todo: Move
-        }
-
+        
         public void Grow()
         {
             state = EBallState.Normal;
             transform.DOScale(0.8f * Vector3.one, 0.25f);
+        }
+
+        public void Select()
+        {
+            _isSelect = !_isSelect;
+            _imgBall.transform.DOKill();
+            if (_isSelect)
+            {
+                _imgBall.transform.DOScale(0.9f * Vector3.one, 0.5f).SetEase(Ease.OutQuint)
+                    .OnComplete(() =>
+                    {
+                        _imgBall.transform.DOScale(0.8f * Vector3.one, 0.5f)
+                            .SetEase(Ease.OutQuint);
+                    }).SetLoops(-1);
+            }
+            else
+            {
+                _imgBall.transform.DOScale(0.8f * Vector3.one, 0.25f);
+            }
+        }
+
+        public void Score()
+        {
+            var fx = qtPooling.Instance.Spawn(DataManager.Instance.fxExplosive.name, DataManager.Instance.fxExplosive);
+            fx.transform.position = transform.position;
+            transform.DOScale(1.3f * Vector3.one, 0.25f).SetEase(Ease.OutQuint).OnComplete(() =>
+            {
+                transform.DOScale(Vector3.zero, 0.25f).SetEase(Ease.OutQuint).OnComplete(() =>
+                {
+                    gameObject.SetActive(false);
+                });
+            });
         }
     }
 }
