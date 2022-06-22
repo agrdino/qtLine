@@ -758,6 +758,7 @@ public class GameManager : qtSingleton<GameManager>
     {
         if (startPosition.Equals(targetPosition))
         {
+            startPosition.node = null;
             return true;
         }
         

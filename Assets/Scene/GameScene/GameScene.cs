@@ -39,7 +39,7 @@ namespace Scene.GameScene
         {
             base.Initialize();
             _txtScore.text = "00";
-            _txtHighScore.text = DataManager.Instance.playerData.best.ToString();
+            _txtHighScore.text = DataManager.Instance.highScore.ToString();
         }
 
         public override void InitObject()
@@ -160,6 +160,7 @@ namespace Scene.GameScene
         public void UpdateUI()
         {
             _txtScore.text = GameManager.Instance.score.ToString();
+            _txtScore.text = DataManager.Instance.highScore.ToString();
         }
 
         public void UpdateQueue(List<SquareHandler> queue)
