@@ -1,3 +1,4 @@
+using _Scripts.System;
 using DG.Tweening;
 using UnityEditor;
 using UnityEngine;
@@ -27,6 +28,12 @@ namespace _Scripts.qtLib
             normalSprite = button.image.sprite;
         }
 
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            ResetState();
+        }
+
         public override void OnPointerEnter(PointerEventData eventData)
         {
             base.OnPointerEnter(eventData);
@@ -50,6 +57,7 @@ namespace _Scripts.qtLib
         public override void OnPointerClick(PointerEventData eventData)
         {
             base.OnPointerClick(eventData);
+            AudioManager.Instance.PlaySfx("click_sfx");
             if(!interactable)
             {
                 return;

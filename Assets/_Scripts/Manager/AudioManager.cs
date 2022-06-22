@@ -94,9 +94,9 @@ namespace _Scripts.System
                 {
                     _sfxClip.Add(name, x);
                     temp.clip = x;
-                    temp.Play();
                 }
             }
+            temp.Play();
         }
     }
 }

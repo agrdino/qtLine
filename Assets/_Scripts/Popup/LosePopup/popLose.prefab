@@ -613,9 +613,10 @@ MonoBehaviour:
   _txtContent: {fileID: 181321338944876242}
   _moveIn: 4
   _moveOut: 5
-  _txtTitle: {fileID: 4707464799677796055}
   _btnYes: {fileID: 1845406113459504827}
   _btnNo: {fileID: 7672421617483908247}
+  _txtScore: {fileID: 3092913774849647146}
+  _txtHighScore: {fileID: 8605766033567832994}
 --- !u!1 &3778865015538532299
 GameObject:
   m_ObjectHideFlags: 0
@@ -793,7 +794,7 @@ MonoBehaviour:
   button: {fileID: 7672421617483908247}
   scale: 1
   selectedSprite: {fileID: 0}
-  normalSprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  normalSprite: {fileID: 21300000, guid: 5dec73e9ae51f4f449835068fa42ab0e, type: 3}
   changeSprite: 0
   showObj: 0
   selectedObj: {fileID: 0}
@@ -921,7 +922,7 @@ MonoBehaviour:
   button: {fileID: 1845406113459504827}
   scale: 1
   selectedSprite: {fileID: 0}
-  normalSprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  normalSprite: {fileID: 21300000, guid: ef147e2665db3394ab8f3c2ade98cbf5, type: 3}
   changeSprite: 0
   showObj: 0
   selectedObj: {fileID: 0}

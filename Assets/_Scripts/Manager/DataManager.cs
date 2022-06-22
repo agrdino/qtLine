@@ -83,8 +83,21 @@ public class DataManager : qtSingleton<DataManager>
         }
     }
 
+    public int highScore
+    {
+        get => playerData.best;
+        set
+        {
+            if (value >= playerData.best)
+            {
+                playerData.best = value;
+                SaveData(false);
+            }
+        }
+    }
+    
+    
     private LevelData _levelData;
-
     public Level defaulLevel
     {
         get

@@ -1,3 +1,4 @@
+using _Scripts.System;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -41,6 +42,7 @@ namespace _Scripts.Handler
         public void Initialize(int color, EBallState state, EBallType type = EBallType.Normal)
         {
             InitObject();
+            transform.DOKill();
             _isSelect = false;
             this.state = state;
             if (state == EBallState.Queue)
@@ -70,6 +72,7 @@ namespace _Scripts.Handler
             _imgBall.transform.DOKill();
             if (_isSelect)
             {
+                AudioManager.Instance.PlaySfx("ball_sfx");
                 _imgBall.transform.DOScale(0.9f * Vector3.one, 0.5f).SetEase(Ease.OutQuint)
                     .OnComplete(() =>
                     {

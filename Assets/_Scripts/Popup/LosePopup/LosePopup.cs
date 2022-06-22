@@ -28,7 +28,7 @@ namespace _Prefab.Popup.YesNoPopup
             _evtNo = no;
 
             _txtScore.text = GameManager.Instance.score.ToString();
-            _txtHighScore.text = DataManager.Instance.playerData.best.ToString();
+            _txtHighScore.text = "High score: " + DataManager.Instance.highScore;
             return this;
         }
 

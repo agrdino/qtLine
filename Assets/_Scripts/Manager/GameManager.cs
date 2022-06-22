@@ -88,6 +88,30 @@ public class GameManager : qtSingleton<GameManager>
         playTime = Time.time - _startTime;
     }
 
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus)
+        {
+            DataManager.Instance.SaveData(true);
+        }
+        else
+        {
+            DataManager.Instance.playerData.isSaving = false;
+        }
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus)
+        {
+            DataManager.Instance.SaveData(true);
+        }
+        else
+        {
+            DataManager.Instance.playerData.isSaving = false;
+        }
+    }
+
     #region ----- PUBLIC FUNCTION -----
     
     public void TargetSelect(SquareHandler target)
@@ -139,23 +163,46 @@ public class GameManager : qtSingleton<GameManager>
                 return;
             }
             
-            var availableCount = squareForCheck.FindAll(square => !square.hasBall).Count;
-            if (availableCount != 0)
-            {
-                SquareHandler square = null;
-                do
-                {
-                    square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
-                } while (square.hasBall);
-
-                var ball = target.ball;
-                _ballQueue.Remove(target);
-                _ballQueue.Add(square);
-            
-                square.ball = ball;
-                target.ball = null;
-                ball.transform.position = square.transform.position;
-            }
+            // var availableCount = squareForCheck.FindAll(square => !square.hasBall).Count;
+            // if (availableCount != 0)
+            // {
+            //     SquareHandler square = null;
+            //     do
+            //     {
+            //         square = _squareHandlers[Random.Range(0, Col), Random.Range(0, Row)];
+            //     } while (square.hasBall);
+            //
+            //     var ball = target.ball;
+            //     _ballQueue.Remove(target);
+            //     _ballQueue.Add(square);
+            //
+            //     square.ball = ball;
+            //     target.ball = null;
+            //     ball.transform.position = square.transform.position;
+            // }
+            // else
+            // {
+            //     _ballQueue.ForEach(square => square.ball.Grow());
+            //     var tempBall = target.ball;
+            //     target.ball = selectedBall.ball;
+            //     target.ball.transform.DOMove(selectedBall.transform.position, 0.025f);
+            //     selectedBall.ball = tempBall;
+            //     tempBall.transform.position = selectedBall.transform.position;
+            //     if (isEnd)
+            //     {
+            //         DataManager.Instance.SaveData(false);
+            //         IsEnd = true;
+            //         ((LosePopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Lose)).Initialize(RestartGame, delegate
+            //         {
+            //             ClearGame();
+            //             UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
+            //         });
+            //     }
+            //     else
+            //     {
+            //         NewTurn();
+            //     }
+            // }
         }
 
         if (selectedBall.ball.type == EBallType.Ghost)
@@ -203,6 +250,29 @@ public class GameManager : qtSingleton<GameManager>
                             target.ball = null;
                             ball.transform.position = square.transform.position;
                         }
+                        else
+                        {
+                            _ballQueue.ForEach(square => square.ball.Grow());
+                            var tempBall = target.ball;
+                            target.ball = selectedBall.ball;
+                            target.ball.transform.DOMove(selectedBall.transform.position, 0.025f);
+                            selectedBall.ball = tempBall;
+                            tempBall.transform.position = selectedBall.transform.position;
+                            if (isEnd)
+                            {
+                                DataManager.Instance.SaveData(false);
+                                IsEnd = true;
+                                ((LosePopup) UIManager.Instance.ShowPopup(qtScene.EPopup.Lose)).Initialize(RestartGame, delegate
+                                {
+                                    ClearGame();
+                                    UIManager.Instance.ShowScene(qtScene.EScene.MainMenu);
+                                });
+                            }
+                            else
+                            {
+                                NewTurn();
+                            }
+                        }
                     }
                 }
 
@@ -215,6 +285,7 @@ public class GameManager : qtSingleton<GameManager>
             else
             {
                 Debug.LogError("Cant find path!");
+                AudioManager.Instance.PlaySfx("wrong_sfx");
                 selectedBall.ball.Select();
                 selectedBall = null;
             }
@@ -515,6 +586,7 @@ public class GameManager : qtSingleton<GameManager>
             temp = temp.node;
             yield return moveCoroutine;
         }
+        AudioManager.Instance.PlaySfx("complete_move_sfx");
         ball.transform.position = temp.transform.position;
         _ballQueue.ForEach(square =>
         {
@@ -611,12 +683,20 @@ public class GameManager : qtSingleton<GameManager>
 
     private void ScoreCalculate()
     {
+        //Add bonus
         foreach (var row in _row)
         {
             score += ScoreCheck(row);
         }
 
-        score += squareForCheck.FindAll(square => square.isScore).Count;
+        DataManager.Instance.highScore = score;
+
+        var tempScore = squareForCheck.FindAll(square => square.isScore).Count;
+        if (tempScore > 0)
+        {
+            AudioManager.Instance.PlaySfx("match_sfx");
+            score += squareForCheck.FindAll(square => square.isScore).Count;
+        }
 
         level = 3 + score / 50;
         level = Math.Clamp(level, 3, DataManager.Instance.colorBank.Length);
@@ -696,6 +776,7 @@ public class GameManager : qtSingleton<GameManager>
         
         while (availableMove.Count > 0)
         {
+            _path[startPosition] = true;
             startPosition.node = availableMove.Pop();
             if (_path[startPosition.node])
             {
@@ -742,14 +823,16 @@ public class GameManager : qtSingleton<GameManager>
             {
                 //Bot
                 if (!_squareHandlers[center.col, center.row + 1].hasBall 
-                    || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+                    || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col, center.row + 1]);
                 }
                 
                 //Right
                 if (!_squareHandlers[center.col + 1, center.row].hasBall 
-                    || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+                    || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col + 1, center.row].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col + 1, center.row]);
                 }
@@ -758,21 +841,24 @@ public class GameManager : qtSingleton<GameManager>
 
             //Right
             if (!_squareHandlers[center.col + 1, center.row].hasBall ||
-                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col + 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col + 1, center.row]);
             }  
 
             //Top
-            if (!_squareHandlers[center.col, center.row - 1].hasBall ||
-                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col, center.row - 1].hasBall 
+                || _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row - 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row - 1]);
             }        
         
             //Bot
-            if (!_squareHandlers[center.col, center.row + 1].hasBall ||
-                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col, center.row + 1].hasBall
+                || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row + 1]);
             }        
@@ -787,14 +873,16 @@ public class GameManager : qtSingleton<GameManager>
             {
                 //Top
                 if (!_squareHandlers[center.col, center.row - 1].hasBall ||
-                    _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+                    _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col, center.row - 1].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col, center.row - 1]);
                 }
 
                 //Left
                 if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col - 1, center.row]);
                 }
@@ -807,14 +895,16 @@ public class GameManager : qtSingleton<GameManager>
             {
                 //Bot
                 if (!_squareHandlers[center.col, center.row + 1].hasBall ||
-                    _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+                    _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col, center.row + 1]);
                 }
 
                 //Left
                 if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+                    _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+                    || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
                 {
                     direction.Push(_squareHandlers[center.col - 1, center.row]);
                 }
@@ -824,21 +914,24 @@ public class GameManager : qtSingleton<GameManager>
             
             //Left
             if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col - 1, center.row]);
             }        
             
             //Top
             if (!_squareHandlers[center.col, center.row - 1].hasBall ||
-                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row - 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row - 1]);
             }        
         
             //Bot
             if (!_squareHandlers[center.col, center.row + 1].hasBall ||
-                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row + 1]);
             }        
@@ -850,22 +943,25 @@ public class GameManager : qtSingleton<GameManager>
         if (center.row - 1 < 0)
         {
             //Right
-            if (!_squareHandlers[center.col + 1, center.row].hasBall ||
-                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col + 1, center.row].hasBall 
+                || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col + 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col + 1, center.row]);
             }
 
             //Left
-            if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col - 1, center.row].hasBall 
+                || _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col - 1, center.row]);
             }
 
             //Bot
-            if (!_squareHandlers[center.col, center.row + 1].hasBall ||
-                _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col, center.row + 1].hasBall 
+                || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row + 1]);
             }
@@ -877,22 +973,25 @@ public class GameManager : qtSingleton<GameManager>
         if (center.row + 1 >= Row)
         {
             //Right
-            if (!_squareHandlers[center.col + 1, center.row].hasBall ||
-                _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col + 1, center.row].hasBall 
+                || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col + 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col + 1, center.row]);
             }  
         
             //Left
-            if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-                _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col - 1, center.row].hasBall 
+                || _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+                || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col - 1, center.row]);
             }        
         
             //Top
-            if (!_squareHandlers[center.col, center.row - 1].hasBall ||
-                _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+            if (!_squareHandlers[center.col, center.row - 1].hasBall
+                || _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue
+                || _squareHandlers[center.col, center.row - 1].Equals(selectedBall))
             {
                 direction.Push(_squareHandlers[center.col, center.row - 1]);
             }        
@@ -901,29 +1000,33 @@ public class GameManager : qtSingleton<GameManager>
         }
 
         //Right
-        if (!_squareHandlers[center.col + 1, center.row].hasBall ||
-            _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue)
+        if (!_squareHandlers[center.col + 1, center.row].hasBall 
+            || _squareHandlers[center.col + 1, center.row].ball.state == EBallState.Queue
+            || _squareHandlers[center.col + 1, center.row].Equals(selectedBall))
         {
             direction.Push(_squareHandlers[center.col + 1, center.row]);
         }  
         
         //Left
-        if (!_squareHandlers[center.col - 1, center.row].hasBall ||
-            _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue)
+        if (!_squareHandlers[center.col - 1, center.row].hasBall 
+            || _squareHandlers[center.col - 1, center.row].ball.state == EBallState.Queue
+            || _squareHandlers[center.col - 1, center.row].Equals(selectedBall))
         {
             direction.Push(_squareHandlers[center.col - 1, center.row]);
         }        
         
         //Top
-        if (!_squareHandlers[center.col, center.row - 1].hasBall ||
-            _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue)
+        if (!_squareHandlers[center.col, center.row - 1].hasBall 
+            || _squareHandlers[center.col, center.row - 1].ball.state == EBallState.Queue
+            || _squareHandlers[center.col, center.row - 1].Equals(selectedBall))
         {
             direction.Push(_squareHandlers[center.col, center.row - 1]);
         }        
         
         //Bot
-        if (!_squareHandlers[center.col, center.row + 1].hasBall ||
-            _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue)
+        if (!_squareHandlers[center.col, center.row + 1].hasBall 
+            || _squareHandlers[center.col, center.row + 1].ball.state == EBallState.Queue
+            || _squareHandlers[center.col, center.row + 1].Equals(selectedBall))
         {
             direction.Push(_squareHandlers[center.col, center.row + 1]);
         }        
