@@ -577,7 +577,7 @@ public class GameManager : qtSingleton<GameManager>
 
     private IEnumerator Move(SquareHandler startPosition)
     {
-        var temp = startPosition;
+        var temp = ReducePath(startPosition);
         var ball = startPosition.ball;
         var moveCoroutine = new WaitForSeconds(0.025f);
         while (temp.node != null)
@@ -1032,6 +1032,31 @@ public class GameManager : qtSingleton<GameManager>
             direction.Push(_squareHandlers[center.col, center.row + 1]);
         }        
         return direction;
+    }
+
+    private SquareHandler ReducePath(SquareHandler startPosition)
+    {
+        SquareHandler tempSquare = startPosition;
+        List<SquareHandler> tempPath = new List<SquareHandler>();
+        while (tempSquare != null)
+        {
+            tempPath.Add(tempSquare);
+            tempSquare = tempSquare.node;
+        }
+
+        for (int i = 0; i < tempPath.Count; i++)
+        {
+            for (int j = i + 1; j < tempPath.Count; j++)
+            {
+                if (AvailableDirection(tempPath[i]).Contains(tempPath[j].node))
+                {
+                    tempPath[i].node = tempPath[j].node;
+                    tempPath.RemoveAt(j);
+                    j--;
+                }
+            }
+        }
+        return tempPath[0];
     }
 
     #endregion

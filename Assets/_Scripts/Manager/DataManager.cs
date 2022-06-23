@@ -88,7 +88,7 @@ public class DataManager : qtSingleton<DataManager>
         get => playerData.best;
         set
         {
-            if (value >= playerData.best)
+            if (value > playerData.best)
             {
                 playerData.best = value;
                 SaveData(false);
@@ -152,7 +152,6 @@ public class DataManager : qtSingleton<DataManager>
                 }
             }
             string data = JsonUtility.ToJson(_playerData);    
-            Debug.Log(data);
             File.WriteAllText($"{DataPath}/PlayerData.dat", data);
         }
     }
